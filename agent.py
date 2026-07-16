@@ -1,11 +1,40 @@
 import os
+from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.outputs import LLMResult
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_agent
 from tools import get_weather_info
 
 load_dotenv()
+class TokenUsageCallbackHandler(BaseCallbackHandler):
+    """
+    LLM cevap üretimini tamamladıktan sonra UsageMetadata'dan
+    token kullanımını okuyan callback.
+    """
 
+    def __init__(self):
+        self.input_tokens = 0
+        self.output_tokens = 0
+        self.total_tokens = 0
+
+    def on_llm_end(self, response: LLMResult, **kwargs):
+        for generations in response.generations:
+            for generation in generations:
+
+                message = getattr(generation, "message", None)
+
+                if (
+                    message
+                    and hasattr(message, "usage_metadata")
+                    and message.usage_metadata
+                ):
+                    usage = message.usage_metadata
+
+                    self.input_tokens += usage.get("input_tokens", 0)
+                    self.output_tokens += usage.get("output_tokens", 0)
+                    self.total_tokens += usage.get("total_tokens", 0)
+                    
 def build_agent():
     api_key = os.getenv("OPENROUTER_API_KEY")
 
