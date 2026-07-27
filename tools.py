@@ -3,9 +3,12 @@ import requests
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from langchain_core.tools import tool
+from db import save_user, get_user
 
 load_dotenv()
 
+
+# ---------------- WEATHER TOOL ---------------- #
 
 class WeatherInput(BaseModel):
     city: str = Field(
@@ -76,3 +79,53 @@ def get_weather_info(city: str) -> str:
         f"Nem: %{humidity}\n"
         f"Rüzgar: {wind_speed} m/s"
     )
+
+
+# ---------------- DATABASE TOOLS ---------------- #
+
+class UserInfoInput(BaseModel):
+    name: str = Field(
+        description="Kullanıcının adı"
+    )
+    city: str = Field(
+        default="",
+        description="Kullanıcının yaşadığı şehir"
+    )
+
+
+@tool("save_user_info", args_schema=UserInfoInput)
+def save_user_info(name: str, city: str = "") -> str:
+    """
+    Kullanıcının adını ve yaşadığı şehri PostgreSQL veritabanına kaydeder.
+    """
+
+    save_user(
+        name=name,
+        city=city
+    )
+
+    # Tool çıktısı kullanıcıya gösterilmesin
+    return ""
+
+
+class GetUserInput(BaseModel):
+    name: str = Field(
+        description="Bilgileri getirilecek kullanıcının adı"
+    )
+
+
+@tool("get_user_info", args_schema=GetUserInput)
+def get_user_info(name: str) -> dict:
+    """
+    Kullanıcının veritabanındaki bilgilerini getirir.
+    """
+
+    user = get_user(name)
+
+    if user is None:
+        return {}
+
+    return {
+        "name": user[0],
+        "city": user[1]
+    }
