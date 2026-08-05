@@ -18,6 +18,8 @@ from agents.weather_agent import build_weather_agent
 from agents.general_agent import build_general_agent
 from agents.router_agent import build_router
 
+from langgraph.checkpoint.memory import MemorySaver
+
 load_dotenv()
 
 
@@ -85,6 +87,8 @@ def build_graph():
     weather_agent = build_weather_agent(llm)
     general_agent = build_general_agent(llm)
     router = build_router(llm)
+
+    memory = MemorySaver()
 
     workflow = StateGraph(AgentState)
 
@@ -234,5 +238,7 @@ def build_graph():
         END
     )
 
-    return workflow.compile()
+    return workflow.compile(
+        checkpointer=memory
+    )
     

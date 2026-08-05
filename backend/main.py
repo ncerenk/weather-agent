@@ -3,14 +3,10 @@ from typing import Optional
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from fastapi import Request
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from langchain_core.messages import HumanMessage
 
 from graph import build_graph, TokenUsageCallbackHandler
-
+from fastapi.middleware.cors import CORSMiddleware
 
 # ---------------- APP ---------------- #
 
@@ -20,9 +16,16 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+print("CORS AKTIF")
 
-templates = Jinja2Templates(directory="templates")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Graph uygulama başlarken oluşturulur
 graph = build_graph()
@@ -33,6 +36,7 @@ graph = build_graph()
 class ChatRequest(BaseModel):
     message: str
     current_user: Optional[str] = None
+    session_id: str
 
 
 class ChatResponse(BaseModel):
@@ -44,13 +48,6 @@ class ChatResponse(BaseModel):
 
 
 # ---------------- HEALTH ---------------- #
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-        context={"request": request}
-    )
 
 @app.get("/health")
 def health_check():
@@ -74,6 +71,9 @@ def chat(request: ChatRequest):
             "current_user": request.current_user,
         },
         config={
+            "configurable": {
+                "thread_id": request.session_id
+            },
             "callbacks": [token_tracker]
         },
     )
